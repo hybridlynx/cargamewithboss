@@ -1,0 +1,218 @@
+<html>
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Billion Brick Race</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #222; overflow: hidden; }
+    canvas { display: block; margin: 0 auto; background: #ff0000; }
+    #overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      font-size: 32px;
+      z-index: 1;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay">
+    <div id="title">THE BILLION BRICK RACE</div>
+    <button id="startBtn">START</button>
+  </div>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const title = document.getElementById('title');
+    const startBtn = document.getElementById('startBtn');
+
+    let keys = {};
+    let gameRunning = false;
+    let startTime = 0;
+    let player;
+    let enemies = [];
+    let boss;
+    let finishLine = null;
+    let overtaken = 0;
+    let gameWon = false;
+
+    class Car {
+      constructor(x, y, color, width = 30, height = 50) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.width = width;
+        this.height = height;
+      }
+
+      draw() {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+      }
+
+      move(dy) {
+        this.y += dy;
+      }
+
+      collidesWith(other) {
+        return (
+          this.x < other.x + other.width &&
+          this.x + this.width > other.x &&
+          this.y < other.y + other.height &&
+          this.y + this.height > other.y
+        );
+      }
+    }
+
+    function initGame() {
+      player = new Car(185, 500, 'blue');
+      enemies = [];
+      boss = null;
+      finishLine = null;
+      overtaken = 0;
+      gameWon = false;
+
+      // spawn 9 red cars spaced further vertically
+      for (let i = 0; i < 9; i++) {
+        const lane = [90, 185, 280][Math.floor(Math.random() * 3)];
+        enemies.push(new Car(lane, -i * 250, 'red'));
+      }
+    }
+
+    function update() {
+      if (!gameRunning) return;
+
+      // Move player
+      if (keys['a']) player.x -= 5;
+      if (keys['d']) player.x += 5;
+
+      // Check if player touches grass
+      if (player.x < 60 || player.x + player.width > 340) {
+        gameRunning = false;
+        setTimeout(() => showOverlay('GAME OVER'), 500);
+      }
+
+      const now = Date.now();
+      const elapsed = (now - startTime) / 1000;
+
+      // Move enemies and check if overtaken or collided
+      enemies.forEach(enemy => {
+        enemy.move(2);
+        if (!enemy.overtaken && enemy.y > player.y + player.height) {
+          enemy.overtaken = true;
+          overtaken++;
+        }
+        if (player.collidesWith(enemy)) {
+          gameRunning = false;
+          setTimeout(() => showOverlay('GAME OVER'), 500);
+        }
+      });
+
+      // Boss appears after 9 enemies are overtaken
+      if (overtaken >= 9 && !boss) {
+        boss = new Car(185, -100, 'purple', 40, 60);
+        boss.dir = 1;
+      }
+
+      // Move boss side to side and down
+      if (boss) {
+        boss.move(2);
+        boss.x += boss.dir * 4;
+        if (boss.x <= 60 || boss.x + boss.width >= 340) boss.dir *= -1;
+
+        if (player.collidesWith(boss)) {
+          gameRunning = false;
+          setTimeout(() => showOverlay('GAME OVER'), 500);
+        }
+
+        if (!boss.overtaken && boss.y > player.y + player.height) {
+          boss.overtaken = true;
+          finishLine = { y: boss.y - 300 };
+        }
+      }
+
+      // Move finish line
+      if (finishLine) finishLine.y += 2;
+
+      // Check win
+      if (finishLine && finishLine.y > player.y) {
+        gameRunning = false;
+        setTimeout(() => showOverlay('YOU WIN!'), 1000);
+      }
+    }
+
+    function drawRoad() {
+      // grass sides
+      ctx.fillStyle = '#4CAF50';
+      ctx.fillRect(0, 0, 60, canvas.height);
+      ctx.fillRect(340, 0, 60, canvas.height);
+
+      // road
+      ctx.fillStyle = 'gray';
+      ctx.fillRect(60, 0, 280, canvas.height);
+    }
+
+    function drawFinishLine() {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(60, finishLine.y, 280, 5);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawRoad();
+      enemies.forEach(e => e.draw());
+      if (boss) boss.draw();
+      if (finishLine) drawFinishLine();
+      player.draw();
+    }
+
+    function loop() {
+      update();
+      draw();
+      if (gameRunning) requestAnimationFrame(loop);
+    }
+
+    function showOverlay(message) {
+      overlay.style.display = 'flex';
+      title.textContent = message;
+      startBtn.textContent = 'REPLAY';
+      let quitBtn = document.getElementById('quitBtn');
+      if (!quitBtn) {
+        quitBtn = document.createElement('button');
+        quitBtn.textContent = 'QUIT';
+        quitBtn.id = 'quitBtn';
+        quitBtn.onclick = () => window.close();
+        overlay.appendChild(quitBtn);
+      }
+    }
+
+    startBtn.onclick = () => {
+      overlay.style.display = 'none';
+      initGame();
+      startTime = Date.now();
+      gameRunning = true;
+      loop();
+    };
+
+    window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+  </script>
+</body>
+</html>
+l>
