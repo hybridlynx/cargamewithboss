@@ -158,7 +158,7 @@
       // Move boss side to side and down
       if (boss) {
         boss.move(2);
-        boss.x += boss.dir * 2;
+        boss.x += boss.dir * 4;
         if (boss.x <= 60 || boss.x + boss.width >= 340) boss.dir *= -1;
 
         if (player.collidesWith(boss)) {
