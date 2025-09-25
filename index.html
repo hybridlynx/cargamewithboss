@@ -67,6 +67,8 @@
     const mobileControls = document.getElementById('mobile-controls');
     const leftBtn = document.getElementById('leftBtn');
     const rightBtn = document.getElementById('rightBtn');
+    const bossImg = new Image();
+bossImg.src = 'boss.png';
 
     let keys = {};
     let gameRunning = false;
@@ -114,7 +116,7 @@
       overtaken = 0;
       gameWon = false;
 
-      // spawn 9 red cars spaced further vertically
+      
       for (let i = 0; i < 9; i++) {
         const lane = [90, 185, 280][Math.floor(Math.random() * 3)];
         enemies.push(new Car(lane, -i * 250, 'red'));
@@ -124,11 +126,11 @@
     function update() {
       if (!gameRunning) return;
 
-      // Move player
+      
       if (keys['a']) player.x -= 5;
       if (keys['d']) player.x += 5;
 
-      // Check if player touches grass
+      
       if (player.x < 60 || player.x + player.width > 340) {
         gameRunning = false;
         setTimeout(() => showOverlay('GAME OVER'), 500);
@@ -136,7 +138,7 @@
 
       const now = Date.now();
 
-      // Move enemies and check if overtaken or collided
+      
       enemies.forEach(enemy => {
         enemy.move(2);
         if (!enemy.overtaken && enemy.y > player.y + player.height) {
@@ -149,13 +151,13 @@
         }
       });
 
-      // Boss appears after 9 enemies are overtaken
+      
       if (overtaken >= 9 && !boss) {
         boss = new Car(185, -100, 'purple', 40, 60);
         boss.dir = 1;
       }
 
-      // Move boss side to side and down
+      
       if (boss) {
         boss.move(2);
         boss.x += boss.dir * 4;
@@ -172,10 +174,10 @@
         }
       }
 
-      // Move finish line
+      
       if (finishLine) finishLine.y += 2;
 
-      // Check win
+      
       if (finishLine && finishLine.y > player.y) {
         gameRunning = false;
         setTimeout(() => showOverlay('YOU WIN!'), 1000);
@@ -199,7 +201,16 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawRoad();
       enemies.forEach(e => e.draw());
-      if (boss) boss.draw();
+      if (boss) {
+  if (bossImg.complete) {
+    ctx.drawImage(bossImg, boss.x, boss.y, boss.width, boss.height);
+  } else {
+    
+    ctx.fillStyle = boss.color;
+    ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+  }
+}
+
       if (finishLine) drawFinishLine();
       player.draw();
     }
@@ -236,7 +247,7 @@
     window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
     window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-    // Touch controls for phones
+    
     leftBtn.addEventListener('touchstart', () => keys['a'] = true);
     leftBtn.addEventListener('touchend', () => keys['a'] = false);
     rightBtn.addEventListener('touchstart', () => keys['d'] = true);
